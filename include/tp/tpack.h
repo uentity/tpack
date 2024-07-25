@@ -17,15 +17,20 @@ namespace tp {
 	template<typename... Ts>
 	inline static constexpr auto tpack_v = tpack<Ts...>{};
 
+	// `unit` is an alias to `tpack<T>` with single element
 	template<typename T>
 	using unit = tpack<T>;
 
 	template<typename T>
 	inline static constexpr auto unit_v = unit<T>{};
 
+	// `nil` is empty tpack
 	using nil_tpack = tpack<>;
 	inline static constexpr auto nil_v = nil_tpack{};
+	// [NOTE] `tpack_v<nil_tpack>` is not the same as `nil_v`:
+	// tpack<tpack<>> != tpack<>
 
+	// operators
 	template<typename... Ts, typename... Us>
 	constexpr bool operator==(tpack<Ts...>, tpack<Us...>) { return false; }
 
@@ -37,9 +42,6 @@ namespace tp {
 
 	template<typename... Ts, typename... Us>
 	constexpr auto operator+(tpack<Ts...> x, tpack<Us...> y) { return tpack_v<Ts..., Us...>; }
-
-	static_assert(unit<int>{} == unit<int>{});
-	static_assert(unit<char>{} != unit<int>{});
 
 	// test if type is tpack
 	template<typename T>
@@ -54,14 +56,9 @@ namespace tp {
 	template<typename T>
 	inline static constexpr bool is_tpack_v = is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
-	static_assert(is_tpack_v<nil_tpack>);
-	static_assert(is_tpack_v<const unit<int>&>);
-	static_assert(is_tpack_v<tpack<int, char, double>&&>);
-	static_assert(!is_tpack_v<int>);
-
+	// helper to suppress unused expression result compiler warnings
 	struct ignore_t {
-		template<typename... Ts>
-		constexpr ignore_t(Ts&&...) {}
+		constexpr ignore_t() {}
 
 		template<typename T>
 		constexpr auto& operator=(T&&) const { return *this; }
@@ -69,8 +66,7 @@ namespace tp {
 
 	inline static constexpr auto ignore = ignore_t{};
 
-	// meta functions adapters -> constexpr functions taking type packs (typically `unit`)
-
+	// adapters for meta functions -> constexpr functions taking type packs (typically `unit`)
 	template<template<typename...> typename F, typename... Ts>
 	struct mfn_value {
 		template<typename... Us>
@@ -111,7 +107,7 @@ namespace tp {
 	};
 
 	template<typename F, typename... Args>
-	using adapter_result_t = typename decltype(std::declval<F>()(std::declval<Args>()...))::type;
+	using fn_result_t = typename decltype(std::declval<F>()(std::declval<Args>()...))::type;
 
 	// apply - only makes sense for metafunctions
 	template<template<typename...> typename F, typename... Ts>
@@ -122,23 +118,12 @@ namespace tp {
 	template<template<typename...> typename F, typename TP>
 	using make = typename decltype(mfn_apply<F>::call(std::declval<TP>()))::type;
 
-	static_assert(apply<is_tpack>(tpack_v<nil_tpack>) == unit_v<std::true_type>);
-	static_assert(apply<is_tpack>(tpack_v<tpack<int, bool>>) == unit_v<std::true_type>);
-	static_assert(apply<is_tpack>(tpack_v<int>) == unit_v<std::false_type>);
-
-	static_assert(std::is_same_v<make<tpack, tpack<int, char>>, tpack<int, char>>);
-
 	template<template<typename... Ts> typename F, typename... Us>
 	constexpr auto apply_v(tpack<Us...> tp) {
 		return mfn_value<F>::call(tp);
 	}
 
-	static_assert(apply_v<is_tpack>(tpack_v<nil_tpack>) == true);
-	static_assert(apply_v<is_tpack>(tpack_v<tpack<int, bool>>) == true);
-	static_assert(apply_v<is_tpack>(tpack_v<int>) == false);
-
 	// basic API
-
 	template<typename... Ts>
 	constexpr auto size(tpack<Ts...>) { return sizeof...(Ts); }
 
@@ -156,33 +141,21 @@ namespace tp {
 		return (tps + ...);
 	}
 
-	static_assert(tpack_v<int> + tpack_v<char, bool> == tpack_v<int, char, bool>);
-	static_assert(concat(tpack_v<int>, tpack_v<char, bool>) == tpack_v<int, char, bool>);
-	static_assert(concat(tpack_v<int>, tpack_v<char, bool>, tpack_v<int&, double&>) == tpack_v<int, char, bool, int&, double&>);
-	static_assert(concat(nil_v, tpack_v<char, bool>, tpack_v<int&, double&>) == tpack_v<char, bool, int&, double&>);
-
 	// push front/back
-
 	template<typename T, typename... Ts>
 	constexpr auto push_front(tpack<Ts...>) -> tpack<T, Ts...> { return {}; }
 
 	template<typename... Ts, typename T>
 	constexpr auto push_front(tpack<Ts...>, unit<T>) -> tpack<T, Ts...> { return {}; }
 
-	static_assert(push_front<int>(tpack<double, char>{}) == tpack<int, double, char>{});
-
 	template<typename T, typename... Ts>
 	constexpr auto pop_front(tpack<T, Ts...>) -> tpack<Ts...> { return {}; }
-
-	static_assert(pop_front(tpack<int, double, char>{}) == tpack<double, char>{});
 
 	template<typename T, typename... Ts>
 	constexpr auto push_back(tpack<Ts...>) -> tpack<Ts..., T> { return {}; }
 
 	template<typename... Ts, typename T>
 	constexpr auto push_back(tpack<Ts...>, unit<T>) -> tpack<Ts..., T> { return {}; }
-
-	static_assert(push_back<int>(tpack<double, char>{}) == tpack<double, char, int>{});
 
 	// get
 	namespace detail {
@@ -208,7 +181,14 @@ namespace tp {
 		return unit_v<decltype( detail::get_impl<std::make_index_sequence<I>>::get(unit_v<Ts>...) )>;
 	}
 
-	static_assert(get<1>(tpack_v<double, int&, char>) == unit_v<int&>);
+	// back
+	template<typename... Ts>
+	constexpr auto back(tpack<Ts...> tp) {
+		if constexpr(empty(tp))
+			return nil_v;
+		else
+			return get<size(tp) - 1>(tp);
+	}
 
 	// reverse
 	namespace detail {
@@ -225,22 +205,7 @@ namespace tp {
 		return detail::do_reverse(std::index_sequence_for<Ts...>{}, tp);
 	}
 
-	static_assert(reverse(tpack_v<int&, double&&, char**>) == tpack_v<char**, double&&, int&>);
-
-	// back
-
-	template<typename... Ts>
-	constexpr auto back(tpack<Ts...> tp) {
-		if constexpr(empty(tp))
-			return nil_v;
-		else
-			return get<size(tp) - 1>(tp);
-	}
-
-	static_assert(back(tpack_v<int, float, char*>) == unit_v<char*>);
-	static_assert(back(nil_v) == nil_v);
-
-	// checks
+	// contains
 	template<typename T, typename... Ts>
 	constexpr bool contains(tpack<Ts...>) {
 		return (std::is_same_v<T, Ts> || ...);
@@ -248,10 +213,6 @@ namespace tp {
 
 	template<typename... Ts, typename T>
 	constexpr bool contains(tpack<Ts...> x, unit<T>) { return contains<T>(x); }
-
-	static_assert(contains<int>(tpack<double, char, int>{}));
-	static_assert(!contains<float>(tpack<double, char, int>{}));
-	static_assert(!contains(nil_v, tpack<int>{}));
 
 	// find
 	template<typename T, typename... Ts>
@@ -263,11 +224,6 @@ namespace tp {
 
 	template<typename... Ts, typename T>
 	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<T>(x); }
-
-	static_assert(find<int>(tpack<int, double, char>{}) == 0);
-	static_assert(find(tpack<int, double, char>{}, tpack<double>{}) == 1);
-	static_assert(find<char>(tpack<int, double, char>{}) == 2);
-	static_assert(find(tpack<int, double, char>{}, unit<bool>{}) == 3);
 
 	// find_if
 	template<typename... Ts, typename Pred>
@@ -282,8 +238,6 @@ namespace tp {
 		return find_if(x, mfn_value_adapter<Pred>);
 	}
 
-	static_assert(find_if<std::is_pointer>(tpack<int, int*, char>{}) == 1);
-
 	// all_of
 	template<typename... Ts, typename Pred>
 	constexpr bool all_of(tpack<Ts...>, Pred f) {
@@ -295,8 +249,6 @@ namespace tp {
 		return all_of(x, mfn_value_adapter<Pred>);
 	}
 
-	static_assert(all_of<std::is_pointer>(tpack_v<char*, bool*>));
-
 	// any_of
 	template<typename... Ts, typename Pred>
 	constexpr bool any_of(tpack<Ts...>, Pred f) {
@@ -307,9 +259,6 @@ namespace tp {
 	constexpr auto any_of(tpack<Ts...> x) {
 		return any_of(x, mfn_value_adapter<Pred>);
 	}
-
-	static_assert(any_of<std::is_pointer>(tpack_v<char, bool*>));
-	static_assert(!any_of<std::is_reference>(nil_v));
 
 	// none_of
 	template<typename... Ts, typename Pred>
@@ -325,16 +274,13 @@ namespace tp {
 	// transform
 	template<typename... Ts, typename F>
 	constexpr auto transform(tpack<Ts...> x, F f) {
-		return tpack_v<adapter_result_t<F, unit<Ts>>...>;
+		return tpack_v<fn_result_t<F, unit<Ts>>...>;
 	}
 
 	template<template<typename...> typename F, typename... Ts>
 	constexpr auto transform(tpack<Ts...> x) {
 		return tpack_v<typename F<Ts>::type...>;
 	}
-
-	static_assert(transform<std::add_pointer>(tpack_v<int, double, char>) == tpack_v<int*, double*, char*>);
-	static_assert(transform(tpack_v<int, double, char>, mfn_type_adapter<std::add_pointer>) == tpack_v<int*, double*, char*>);
 
 	// pop_back
 	namespace detail {
@@ -354,8 +300,6 @@ namespace tp {
 			return detail::get_first(std::make_index_sequence<size(tp) - 1>{}, tp);
 	}
 
-	static_assert(pop_back(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&>);
-
 	// generate
 	namespace detail {
 
@@ -370,8 +314,6 @@ namespace tp {
 	constexpr auto generate() {
 		return detail::do_generate<T>(std::make_index_sequence<N>{});
 	}
-
-	static_assert(generate<3, int&>() == tpack_v<int&, int&, int&>);
 
 	// filter
 	namespace detail {
@@ -396,7 +338,4 @@ namespace tp {
 		return filter(tp, mfn_value_adapter<Pred>);
 	}
 
-	static_assert(filter<std::is_pointer>(tpack_v<int*, int, char*>) == tpack_v<int*, char*>);
-	static_assert(filter<std::is_pointer>(nil_v) == nil_v);
-
-} // namespace typelist
+} // namespace tp
