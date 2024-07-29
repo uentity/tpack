@@ -138,6 +138,9 @@ namespace tp {
 	template<typename T, typename... Ts>
 	constexpr auto head(tpack<T, Ts...>) -> unit<T> { return {}; }
 
+	template<typename... Ts>
+	using head_t = typename decltype(head(tpack_v<Ts...>))::type;
+
 	template<typename T, typename... Ts>
 	constexpr auto tail(tpack<T, Ts...>) -> tpack<Ts...> { return {}; }
 
@@ -196,6 +199,9 @@ namespace tp {
 		else
 			return get<size(tp) - 1>(tp);
 	}
+
+	template<typename... Ts>
+	using back_t = typename decltype(back(tpack_v<Ts...>))::type;
 
 	// pop_back
 	namespace detail {
