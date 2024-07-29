@@ -95,4 +95,44 @@ namespace tp {
 	static_assert(filter<std::is_pointer>(tpack_v<int*, int, char*>) == tpack_v<int*, char*>);
 	static_assert(filter<std::is_pointer>(nil_v) == nil_v);
 
+	// distinct
+	static_assert(distinct(nil_v) == nil_v);
+	static_assert(distinct(tpack_v<int>) == unit_v<int>);
+	static_assert(distinct(tpack_v<int, int>) == unit_v<int>);
+	static_assert(distinct(tpack_v<char, int, char*,  char, char, int, int&&>) == tpack_v<char, int, char*, int&&>);
+
+	// fold_left, fold_right
+	template<typename L, typename R>
+	struct fold_always_lhs {
+		static constexpr auto value = unit_v<L>;
+	};
+
+	static_assert(fold_left<fold_always_lhs>(nil_v) == nil_v);
+	static_assert(fold_left<fold_always_lhs>(tpack_v<int>) == unit_v<int>);
+	static_assert(fold_left<fold_always_lhs>(tpack_v<int>, unit_v<void>) == unit_v<void>);
+	static_assert(fold_left<fold_always_lhs>(tpack_v<int, char, double>) == unit_v<int>);
+
+	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>) == unit_v<double>);
+	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>, unit_v<void>) == unit_v<void>);
+
+	// simulate reverse with fold
+	template<typename L, typename R>
+	struct fold_reverse {
+		static constexpr auto value = unit_v<tpack<R, L>>;
+	};
+
+	template<typename... Ts, typename R>
+	struct fold_reverse<tpack<Ts...>, R> {
+		static constexpr auto value = unit_v<tpack<R, Ts...>>;
+	};
+
+	static_assert(fold_left<fold_reverse>(nil_v) == nil_v);
+	static_assert(fold_left<fold_reverse>(unit_v<t0>) == unit_v<t0>);
+	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<double, char, int>>);
+	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<double, char, int, void>>);
+	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>, unit_v<tpack<t0, t1>>) == unit_v<tpack<double, char, int, t0, t1>>);
+
+	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<int, char, double>>);
+	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<int, char, double, void>>);
+
 } // namespace tp

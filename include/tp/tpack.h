@@ -85,7 +85,7 @@ namespace tp {
 	struct mfn_type {
 		template<typename... Us>
 		static constexpr auto call(tpack<Us...>) {
-			return unit<typename F<Ts..., Us...>::type>{};
+			return unit_v<typename F<Ts..., Us...>::type>;
 		}
 
 		template<typename... Us>
@@ -99,7 +99,7 @@ namespace tp {
 	struct mfn_apply {
 		template<typename... Us>
 		static constexpr auto call(tpack<Us...>) {
-			return unit<F<Ts..., Us...>>{};
+			return unit_v<F<Ts..., Us...>>;
 		}
 
 		template<typename... Us>
@@ -115,13 +115,18 @@ namespace tp {
 		return mfn_type<F>::call(tp);
 	}
 
-	template<template<typename...> typename F, typename TP>
-	using make = typename decltype(mfn_apply<F>::call(std::declval<TP>()))::type;
-
 	template<template<typename... Ts> typename F, typename... Us>
 	constexpr auto apply_v(tpack<Us...> tp) {
 		return mfn_value<F>::call(tp);
 	}
+
+	template<template<typename...> typename F, typename TP>
+	constexpr auto make_v(TP tp) {
+		return mfn_apply<F>::call(tp);
+	}
+
+	template<template<typename...> typename F, typename TP>
+	using make = typename decltype(make_v<F>(std::declval<TP>()))::type;
 
 	// basic API
 	template<typename... Ts>
@@ -170,6 +175,8 @@ namespace tp {
 
 		template<size_t... Is>
 		struct get_impl<std::index_sequence<Is...>> {
+			// `unit<T>` at `Is` position used to infer type `T` of the argument placed there
+			// which is recorded as return type
 			template<typename T>
 			static constexpr T get(decltype(Is, std::declval<unit_placeholder>())..., unit<T>, ...);
 		};
@@ -188,6 +195,24 @@ namespace tp {
 			return nil_v;
 		else
 			return get<size(tp) - 1>(tp);
+	}
+
+	// pop_back
+	namespace detail {
+
+		template<std::size_t... Is, typename TP>
+		constexpr auto get_first(std::index_sequence<Is...>, TP tp) {
+			return tpack_v<typename decltype(get<Is>(tp))::type...>;
+		}
+
+	} // namespace detail
+
+	template<typename... Ts>
+	constexpr auto pop_back(tpack<Ts...> tp) {
+		if constexpr(empty(tp))
+			return tp;
+		else
+			return detail::get_first(std::make_index_sequence<size(tp) - 1>{}, tp);
 	}
 
 	// reverse
@@ -282,24 +307,6 @@ namespace tp {
 		return tpack_v<typename F<Ts>::type...>;
 	}
 
-	// pop_back
-	namespace detail {
-
-		template<std::size_t... Is, typename TP>
-		constexpr auto get_first(std::index_sequence<Is...>, TP tp) {
-			return tpack_v<typename decltype(get<Is>(tp))::type...>;
-		}
-
-	} // namespace detail
-
-	template<typename... Ts>
-	constexpr auto pop_back(tpack<Ts...> tp) {
-		if constexpr(empty(tp))
-			return tp;
-		else
-			return detail::get_first(std::make_index_sequence<size(tp) - 1>{}, tp);
-	}
-
 	// generate
 	namespace detail {
 
@@ -336,6 +343,74 @@ namespace tp {
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto filter(tpack<Ts...> tp) {
 		return filter(tp, mfn_value_adapter<Pred>);
+	}
+
+	// distinct
+	namespace detail {
+
+		template<typename... Ts, typename... Rs>
+		constexpr auto do_distinct(tpack<Ts...> src, tpack<Rs...> dst) {
+			if constexpr (empty(src))
+				return dst;
+			else {
+				const auto first = head(src);
+				if constexpr (find(dst, first) < size(dst))
+					return do_distinct(pop_front(src), dst);
+				else
+				 	return do_distinct(pop_front(src), push_back(dst, first));
+			}
+		}
+
+	} // namespace detail
+
+	template<typename... Ts>
+	constexpr auto distinct(tp::tpack<Ts...> tp) {
+		return detail::do_distinct(tp, nil_v);
+	}
+
+	// fold_left, fold_right
+	namespace detail {
+
+		template<typename T, typename R, typename F>
+		constexpr auto do_fold_left(T, R, F) {
+			static_assert(false, "Folding meta-function `F` must produce `F::value` of type `unit<T>`");
+		}
+
+		template<typename... Ts, typename... Rs, typename F>
+		constexpr auto do_fold_left(tpack<Ts...> tp, tpack<Rs...> res, F f) {
+			if constexpr (empty(tp))
+				return res;
+			else
+				return do_fold_left(pop_front(tp), f(res + head(tp)), f);
+		}
+
+	} // namespace detail
+
+	template<typename... Ts, typename F, typename D = nil_tpack>
+	constexpr auto fold_left(tpack<Ts...> tp, F f, D seed = nil_v) {
+		if constexpr (empty(seed) && size(tp) > 0)
+			return detail::do_fold_left(pop_front(tp), head(tp), f);
+		else
+			return detail::do_fold_left(tp, seed, f);
+	}
+
+	// If `F` is a classic meta-function that calculates `F::type`,
+	// use `fold_left(tp, mfn_type_adapter<F>, seed)` call
+	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
+	constexpr auto fold_left(tpack<Ts...> tp, D seed = nil_v) {
+		return fold_left(tp, mfn_value_adapter<F>, seed);
+	}
+
+	template<typename... Ts, typename F, typename D = nil_tpack>
+	constexpr auto fold_right(tpack<Ts...> tp, F f, D seed = nil_v) {
+		return fold_left(reverse(tp), f, seed);
+	}
+
+	// If `F` is a classic meta-function that calculates `F::type`,
+	// use `fold_right(tp, mfn_type_adapter<F>, seed)` call
+	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
+	constexpr auto fold_right(tpack<Ts...> tp, D seed = nil_v) {
+		return fold_right(tp, mfn_value_adapter<F>, seed);
 	}
 
 } // namespace tp
