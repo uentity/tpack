@@ -50,6 +50,12 @@ namespace tp {
 	static_assert(std::is_same_v<make<tpack, tpack<int, char>>, tpack<int, char>>);
 
 	// basic API: head, tail, push, pop
+	static_assert(head(nil_v) == nil_v);
+	static_assert(head(unit_v<int>) == unit_v<int>);
+	static_assert(head(tpack_v<const int&&, char, double>) == unit_v<const int&&>);
+	static_assert(tail(nil_v) == nil_v);
+	static_assert(tail(unit_v<int>) == nil_v);
+	static_assert(tail(tpack_v<const int&&, char, double>) == tpack_v<char, double>);
 	static_assert(push_front<int>(tpack<double, char>{}) == tpack<int, double, char>{});
 	static_assert(pop_front(tpack<int, double, char>{}) == tpack<double, char>{});
 	static_assert(push_back<int>(tpack<double, char>{}) == tpack<double, char, int>{});

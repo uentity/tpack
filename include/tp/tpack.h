@@ -138,11 +138,15 @@ namespace tp {
 	template<typename T, typename... Ts>
 	constexpr auto head(tpack<T, Ts...>) -> unit<T> { return {}; }
 
+	constexpr auto head(nil_tpack) -> nil_tpack { return {}; }
+
 	template<typename... Ts>
 	using head_t = typename decltype(head(tpack_v<Ts...>))::type;
 
 	template<typename T, typename... Ts>
 	constexpr auto tail(tpack<T, Ts...>) -> tpack<Ts...> { return {}; }
+
+	constexpr auto tail(nil_tpack) -> nil_tpack { return {}; }
 
 	template<typename... TPs>
 	constexpr auto concat(TPs... tps) {
