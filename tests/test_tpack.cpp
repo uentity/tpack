@@ -61,6 +61,15 @@ namespace tp {
 	static_assert(push_back<int>(tpack<double, char>{}) == tpack<double, char, int>{});
 	static_assert(pop_back(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&>);
 
+	// unwrap
+	static_assert(unwrap(nil_v) == nil_v);
+	static_assert(unwrap(unit_v<int>) == unit_v<int>);
+	static_assert(unwrap(tpack_v<int, double, char>) == tpack_v<int, double, char>);
+	static_assert(unwrap(unit_v<nil_tpack>) == nil_v);
+	static_assert(unwrap(unit_v<unit<int>>) == unit_v<int>);
+	static_assert(unwrap(unit_v<tpack<int, char, double>>) == tpack_v<int, char, double>);
+	static_assert(unwrap(unit_v<unit<unit<tpack<int, char, double>>>>) == tpack_v<int, char, double>);
+
 	// get
 	static_assert(get<1>(tpack_v<double, int&, char>) == unit_v<int&>);
 
