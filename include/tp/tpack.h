@@ -155,14 +155,14 @@ namespace tp {
 
 	// unwrap: strips `unit<unit<...tpack<Ts...>...>>` -> tpack<Ts...>
 	template<typename T, typename... Ts>
-	constexpr auto unwrap(tp::tpack<T, Ts...> tp) {
+	constexpr auto strip(tp::tpack<T, Ts...> tp) {
 		if constexpr (sizeof...(Ts) == 0 && is_tpack_v<T>)
-			return unwrap(T{});
+			return strip(T{});
 		else
 			return tp;
 	}
 
-	constexpr auto unwrap(nil_tpack) -> nil_tpack { return {}; }
+	constexpr auto strip(nil_tpack) -> nil_tpack { return {}; }
 
 	// push front/back
 	template<typename T, typename... Ts>
