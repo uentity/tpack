@@ -15,18 +15,18 @@ namespace tp {
 	};
 
 	template<typename... Ts>
-	inline static constexpr auto tpack_v = tpack<Ts...>{};
+	inline constexpr auto tpack_v = tpack<Ts...>{};
 
 	// `unit` is an alias to `tpack<T>` with single element
 	template<typename T>
 	using unit = tpack<T>;
 
 	template<typename T>
-	inline static constexpr auto unit_v = unit<T>{};
+	inline constexpr auto unit_v = unit<T>{};
 
 	// `nil` is empty tpack
 	using nil_tpack = tpack<>;
-	inline static constexpr auto nil_v = nil_tpack{};
+	inline constexpr auto nil_v = nil_tpack{};
 	// [NOTE] `tpack_v<nil_tpack>` is not the same as `nil_v`:
 	// tpack<tpack<>> != tpack<>
 
@@ -41,7 +41,7 @@ namespace tp {
 	constexpr bool operator!=(tpack<Ts...> x, tpack<Us...> y) { return !(x == y); }
 
 	template<typename... Ts, typename... Us>
-	constexpr auto operator+(tpack<Ts...> x, tpack<Us...> y) { return tpack_v<Ts..., Us...>; }
+	constexpr auto operator+(tpack<Ts...>, tpack<Us...>) { return tpack_v<Ts..., Us...>; }
 
 	// test if type is tpack
 	template<typename T>
@@ -54,7 +54,7 @@ namespace tp {
 	using is_tpack_t = typename is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::type;
 
 	template<typename T>
-	inline static constexpr bool is_tpack_v = is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::value;
+	inline constexpr bool is_tpack_v = is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 	// helper to suppress unused expression result compiler warnings
 	struct ignore_t {
@@ -64,7 +64,7 @@ namespace tp {
 		constexpr auto& operator=(T&&) const { return *this; }
 	};
 
-	inline static constexpr auto ignore = ignore_t{};
+	inline constexpr auto ignore = ignore_t{};
 
 	// adapters for meta functions -> constexpr functions taking type packs (typically `unit`)
 	template<template<typename...> typename F, typename... Ts>
@@ -79,7 +79,7 @@ namespace tp {
 	};
 
 	template<template<typename...> typename F, typename... Ts>
-	inline static constexpr auto mfn_value_adapter = mfn_value<F, Ts...>{};
+	inline constexpr auto mfn_value_adapter = mfn_value<F, Ts...>{};
 
 	template<template<typename...> typename F, typename... Ts>
 	struct mfn_type {
@@ -93,7 +93,7 @@ namespace tp {
 	};
 
 	template<template<typename...> typename F, typename... Ts>
-	inline static constexpr auto mfn_type_adapter = mfn_type<F, Ts...>{};
+	inline constexpr auto mfn_type_adapter = mfn_type<F, Ts...>{};
 
 	template<template<typename...> typename F, typename... Ts>
 	struct mfn_apply {
@@ -185,7 +185,7 @@ namespace tp {
 
 		struct unit_placeholder {
 			template<typename T>
-			unit_placeholder(unit<T>) {}
+			unit_placeholder(unit<T>);
 		};
 
 		template<typename T>
