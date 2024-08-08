@@ -24,7 +24,16 @@ target_compile_features(tpack INTERFACE cxx_std_17)
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	include(CTest)
 	if (BUILD_TESTING)
-		add_library(tpack_tests STATIC ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tpack.cpp)
+		add_library(
+			tpack_tests STATIC
+			${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tpack.cpp
+			${CMAKE_CURRENT_SOURCE_DIR}/tests/test_benchmark.cpp
+		)
+		target_compile_options(tpack_tests PRIVATE
+			$<$<CXX_COMPILER_ID:MSVC>:/W4>
+			$<$<CXX_COMPILER_ID:Clang>:-fbracket-depth=1000000 -ftime-trace>
+			$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+		)
 		target_link_libraries(tpack_tests tpack)
 	endif ()
 endif ()

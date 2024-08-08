@@ -101,10 +101,21 @@ namespace tp {
 
 	// transform
 	static_assert(transform<std::add_pointer>(tpack_v<int, double, char>) == tpack_v<int*, double*, char*>);
-	static_assert(transform(tpack_v<int, double, char>, mfn_type_adapter<std::add_pointer>) == tpack_v<int*, double*, char*>);
+	static_assert(transform(tpack_v<int, double, char>, meta::type_adapter_v<std::add_pointer>) == tpack_v<int*, double*, char*>);
 
 	// generate
+	static_assert(generate<0, int>() == nil_v);
 	static_assert(generate<3, int&>() == tpack_v<int&, int&, int&>);
+
+	template<size_t I>
+	struct test_gen_type {
+		using type = std::conditional_t<I%2 == 0, int, char>;
+	};
+
+	static_assert(generate<0, test_gen_type>() == nil_v);
+	static_assert(generate<1, test_gen_type>() == tp::unit_v<int>);
+	static_assert(generate<2, test_gen_type>() == tp::tpack_v<int, char>);
+	static_assert(generate<4, test_gen_type>() == tp::tpack_v<int, char, int, char>);
 
 	// filter
 	static_assert(filter<std::is_pointer>(tpack_v<int*, int, char*>) == tpack_v<int*, char*>);

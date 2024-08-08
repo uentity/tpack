@@ -66,63 +66,99 @@ namespace tp {
 
 	inline constexpr auto ignore = ignore_t{};
 
-	// adapters for meta functions -> constexpr functions taking type packs (typically `unit`)
-	template<template<typename...> typename F, typename... Ts>
-	struct mfn_value {
-		template<typename... Us>
-		static constexpr auto call(tpack<Us...>) {
-			return F<Ts..., Us...>::value;
-		}
+	// collect utility functions for working with meta-functions (aka struct specializations)
+	namespace meta {
 
-		template<typename... Us>
-		constexpr auto operator()(tpack<Us...> x) const { return call(x); }
-	};
+		template<typename... Ts>
+		inline constexpr bool static_false = false;
 
-	template<template<typename...> typename F, typename... Ts>
-	inline constexpr auto mfn_value_adapter = mfn_value<F, Ts...>{};
+		// adapters for meta functions -> constexpr functions taking type packs (typically `unit`)
+		template<template<typename...> typename F, typename... Ts>
+		struct value_adapter {
+			template<typename... Us>
+			static constexpr auto call(tpack<Us...>) {
+				return F<Ts..., Us...>::value;
+			}
 
-	template<template<typename...> typename F, typename... Ts>
-	struct mfn_type {
-		template<typename... Us>
-		static constexpr auto call(tpack<Us...>) {
-			return unit_v<typename F<Ts..., Us...>::type>;
-		}
+			template<typename... Us>
+			constexpr auto operator()(tpack<Us...> x) const { return call(x); }
+		};
 
-		template<typename... Us>
-		constexpr auto operator()(tpack<Us...> x) const { return call(x); }
-	};
+		template<template<typename...> typename F, typename... Ts>
+		inline constexpr auto value_adapter_v = value_adapter<F, Ts...>{};
 
-	template<template<typename...> typename F, typename... Ts>
-	inline constexpr auto mfn_type_adapter = mfn_type<F, Ts...>{};
+		template<template<std::size_t...> typename F, std::size_t... Is>
+		struct idx_value_adapter {
+			template<std::size_t... Js>
+			static constexpr auto call(std::index_sequence<Js...>) {
+				return F<Is..., Js...>::value;
+			}
 
-	template<template<typename...> typename F, typename... Ts>
-	struct mfn_apply {
-		template<typename... Us>
-		static constexpr auto call(tpack<Us...>) {
-			return unit_v<F<Ts..., Us...>>;
-		}
+			template<std::size_t... Js>
+			constexpr auto operator()(std::index_sequence<Js...> js) const { return call(js); }
+		};
 
-		template<typename... Us>
-		constexpr auto operator()(tpack<Us...> x) const { return call(x); }
-	};
+		template<template<std::size_t...> typename F, std::size_t... Is>
+		inline constexpr auto idx_value_adapter_v = idx_value_adapter<F, Is...>{};
 
-	template<typename F, typename... Args>
-	using fn_result_t = typename decltype(std::declval<F>()(std::declval<Args>()...))::type;
+		template<template<typename...> typename F, typename... Ts>
+		struct type_adapter {
+			template<typename... Us>
+			static constexpr auto call(tpack<Us...>) {
+				return unit_v<typename F<Ts..., Us...>::type>;
+			}
+
+			template<typename... Us>
+			constexpr auto operator()(tpack<Us...> x) const { return call(x); }
+		};
+
+		template<template<typename...> typename F, typename... Ts>
+		inline constexpr auto type_adapter_v = type_adapter<F, Ts...>{};
+
+		template<template<std::size_t...> typename F, std::size_t... Is>
+		struct idx_type_adapter {
+			template<std::size_t... Js>
+			static constexpr auto call(std::index_sequence<Js...>) {
+				return unit_v<typename F<Is..., Js...>::type>;
+			}
+
+			template<std::size_t... Js>
+			constexpr auto operator()(std::index_sequence<Js...> js) const { return call(js); }
+		};
+
+		template<template<std::size_t...> typename F, std::size_t... Is>
+		inline constexpr auto idx_type_adapter_v = idx_type_adapter<F, Is...>{};
+
+		template<template<typename...> typename F, typename... Ts>
+		struct apply {
+			template<typename... Us>
+			static constexpr auto call(tpack<Us...>) {
+				return unit_v<F<Ts..., Us...>>;
+			}
+
+			template<typename... Us>
+			constexpr auto operator()(tpack<Us...> x) const { return call(x); }
+		};
+
+		template<typename F, typename... Args>
+		using fn_result_t = typename decltype(std::declval<F>()(std::declval<Args>()...))::type;
+
+	} // namespace ddv::meta
 
 	// apply - only makes sense for metafunctions
 	template<template<typename...> typename F, typename... Ts>
 	constexpr auto apply(tpack<Ts...> tp) {
-		return mfn_type<F>::call(tp);
+		return meta::type_adapter<F>::call(tp);
 	}
 
 	template<template<typename... Ts> typename F, typename... Us>
 	constexpr auto apply_v(tpack<Us...> tp) {
-		return mfn_value<F>::call(tp);
+		return meta::value_adapter<F>::call(tp);
 	}
 
 	template<template<typename...> typename F, typename TP>
 	constexpr auto make_v(TP tp) {
-		return mfn_apply<F>::call(tp);
+		return meta::apply<F>::call(tp);
 	}
 
 	template<template<typename...> typename F, typename TP>
@@ -281,7 +317,7 @@ namespace tp {
 
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto find_if(tpack<Ts...> x) {
-		return find_if(x, mfn_value_adapter<Pred>);
+		return find_if(x, meta::value_adapter_v<Pred>);
 	}
 
 	// all_of
@@ -292,18 +328,18 @@ namespace tp {
 
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto all_of(tpack<Ts...> x) {
-		return all_of(x, mfn_value_adapter<Pred>);
+		return all_of(x, meta::value_adapter_v<Pred>);
 	}
 
 	// any_of
 	template<typename... Ts, typename Pred>
-	constexpr bool any_of(tpack<Ts...>, Pred f) {
-		return (f(unit_v<Ts>) || ...);
+	constexpr bool any_of(tpack<Ts...>, Pred pred) {
+		return (pred(unit_v<Ts>) || ...);
 	}
 
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto any_of(tpack<Ts...> x) {
-		return any_of(x, mfn_value_adapter<Pred>);
+		return any_of(x, meta::value_adapter_v<Pred>);
 	}
 
 	// none_of
@@ -314,33 +350,49 @@ namespace tp {
 
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto none_of(tpack<Ts...> x) {
-		return none_of(x, mfn_value_adapter<Pred>);
+		return none_of(x, meta::value_adapter_v<Pred>);
 	}
 
 	// transform
 	template<typename... Ts, typename F>
-	constexpr auto transform(tpack<Ts...> x, F f) {
-		return tpack_v<fn_result_t<F, unit<Ts>>...>;
+	constexpr auto transform(tpack<Ts...>, F) {
+		return tpack_v<meta::fn_result_t<F, unit<Ts>>...>;
 	}
 
 	template<template<typename...> typename F, typename... Ts>
-	constexpr auto transform(tpack<Ts...> x) {
+	constexpr auto transform(tpack<Ts...>) {
 		return tpack_v<typename F<Ts>::type...>;
 	}
 
 	// generate
 	namespace detail {
 
-		template<typename T, std::size_t... Is>
-		constexpr auto do_generate(std::index_sequence<Is...>) {
-			return (((void)Is, unit_v<T>) + ...);
+		template<typename F, std::size_t... Is>
+		constexpr auto do_generate(F, std::index_sequence<Is...>) {
+			return tp::tpack<meta::fn_result_t<F, std::index_sequence<Is>>...>{};
 		}
+
+		template<typename T>
+		struct gen_identity {
+			template<std::size_t> using type = unit<T>;
+		};
 
 	} // namespace detail
 
+	template<std::size_t N, typename F>
+	constexpr auto generate(F generator) {
+		return detail::do_generate(generator, std::make_index_sequence<N>{});
+	}
+
+	template<std::size_t N, template<std::size_t> typename F>
+	constexpr auto generate() {
+		return generate<N>(meta::idx_type_adapter_v<F>);
+	}
+
 	template<std::size_t N, typename T>
 	constexpr auto generate() {
-		return detail::do_generate<T>(std::make_index_sequence<N>{});
+		using detail::gen_identity;
+		return generate<N, gen_identity<T>::template type>();
 	}
 
 	// filter
@@ -348,7 +400,7 @@ namespace tp {
 		
 		template<typename T, typename F>
 		constexpr auto filter_one(unit<T> t, F f) {
-			if constexpr(f(t))
+			if constexpr (f(t))
 				return t;
 			else
 				return nil_v;
@@ -363,7 +415,7 @@ namespace tp {
 
 	template<template<typename...> typename Pred, typename... Ts>
 	constexpr auto filter(tpack<Ts...> tp) {
-		return filter(tp, mfn_value_adapter<Pred>);
+		return filter(tp, meta::value_adapter_v<Pred>);
 	}
 
 	// distinct
@@ -402,7 +454,8 @@ namespace tp {
 			if constexpr (empty(tp))
 				return res;
 			else
-				return do_fold_left(pop_front(tp), f(res + head(tp)), f);
+				//return do_fold_left(pop_front(tp), f(res + head(tp)), f);
+				return do_fold_left(pop_front(tp), f(tpack_v<Rs..., typename decltype(head(tp))::type>), f);
 		}
 
 	} // namespace detail
@@ -416,10 +469,10 @@ namespace tp {
 	}
 
 	// If `F` is a classic meta-function that calculates `F::type`,
-	// use `fold_left(tp, mfn_type_adapter<F>, seed)` call
+	// use `fold_left(tp, meta::type_adapter_v<F>, seed)` call
 	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
 	constexpr auto fold_left(tpack<Ts...> tp, D seed = nil_v) {
-		return fold_left(tp, mfn_value_adapter<F>, seed);
+		return fold_left(tp, meta::value_adapter_v<F>, seed);
 	}
 
 	template<typename... Ts, typename F, typename D = nil_tpack>
@@ -428,10 +481,10 @@ namespace tp {
 	}
 
 	// If `F` is a classic meta-function that calculates `F::type`,
-	// use `fold_right(tp, mfn_type_adapter<F>, seed)` call
+	// use `fold_right(tp, meta::type_adapter_v<F>, seed)` call
 	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
 	constexpr auto fold_right(tpack<Ts...> tp, D seed = nil_v) {
-		return fold_right(tp, mfn_value_adapter<F>, seed);
+		return fold_right(tp, meta::value_adapter_v<F>, seed);
 	}
 
 } // namespace tp
