@@ -66,7 +66,7 @@ namespace tp {
 
 	inline constexpr auto ignore = ignore_t{};
 
-	// collect utility functions for working with meta-functions (aka struct specializations)
+	// utilities for working with meta-functions (aka struct specializations)
 	namespace meta {
 
 		template<typename... Ts>
@@ -229,26 +229,28 @@ namespace tp {
 	// get
 	namespace detail {
 
-		struct unit_placeholder {
-			template<typename T>
-			unit_placeholder(unit<T>);
-		};
+		// Algorithm based on fold inheritance and then casting to one of the bases
+		// demonstrates the best performance among alternatives
+		template<std::size_t I, typename T>
+		struct indexed_type {};
 
-		template<typename T>
-		struct get_impl;
+		template<typename Is, typename... Ts>
+		struct indexed_types;
 
-		template<size_t... Is>
-		struct get_impl<std::index_sequence<Is...>> {
-			// `unit<T>` at `Is` position used to infer type `T` of the argument placed there
-			// which is recorded as return type
-			template<typename T>
-			static constexpr T get(decltype(Is, std::declval<unit_placeholder>())..., unit<T>, ...);
-		};
+		template<std::size_t... Is, typename... Ts>
+		struct indexed_types<std::index_sequence<Is...>, Ts...> : indexed_type<Is, Ts>... {};
+
+		template<typename... Ts>
+		using indexed_types_for = indexed_types<std::index_sequence_for<Ts...>, Ts...>;
+
+		template<std::size_t I, typename T>
+		constexpr unit<T> get_indexed_type(indexed_type<I, T>*);
 
 	} // namespace detail
 
 	template<std::size_t I, typename... Ts>
-	constexpr auto get(tpack<Ts...>) -> unit<decltype( detail::get_impl<std::make_index_sequence<I>>::get(unit_v<Ts>...) )> {
+	constexpr auto get(tpack<Ts...>)
+	-> decltype( detail::get_indexed_type<I>(std::declval<detail::indexed_types_for<Ts...>*>()) ) {
 		return {};
 	}
 
@@ -287,7 +289,7 @@ namespace tp {
 
 		template<std::size_t... Is, typename TP>
 		constexpr auto do_reverse(std::index_sequence<Is...>, TP tp) {
-			return tpack<typename decltype(get<size(tp) - Is - 1>(tp))::type...>{};
+			return tpack_v<typename decltype(get<size(tp) - Is - 1>(tp))::type...>;
 		}
 
 	} // namespace detail
