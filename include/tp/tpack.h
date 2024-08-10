@@ -41,7 +41,7 @@ namespace tp {
 	constexpr bool operator!=(tpack<Ts...> x, tpack<Us...> y) { return !(x == y); }
 
 	template<typename... Ts, typename... Us>
-	constexpr auto operator+(tpack<Ts...>, tpack<Us...>) { return tpack_v<Ts..., Us...>; }
+	constexpr auto operator+(tpack<Ts...>, tpack<Us...>) -> tpack<Ts..., Us...> { return {}; }
 
 	// test if type is tpack
 	template<typename T>
@@ -104,12 +104,13 @@ namespace tp {
 		template<template<typename...> typename F, typename... Ts>
 		struct type_adapter {
 			template<typename... Us>
-			static constexpr auto call(tpack<Us...>) {
-				return unit_v<typename F<Ts..., Us...>::type>;
-			}
+			using type = unit<typename F<Ts..., Us...>::type>;
 
 			template<typename... Us>
-			constexpr auto operator()(tpack<Us...> x) const { return call(x); }
+			static constexpr auto call(tpack<Us...>) -> type<Us...> { return {}; }
+
+			template<typename... Us>
+			constexpr auto operator()(tpack<Us...>) const -> type<Us...> { return {}; }
 		};
 
 		template<template<typename...> typename F, typename... Ts>
@@ -117,13 +118,21 @@ namespace tp {
 
 		template<template<std::size_t...> typename F, std::size_t... Is>
 		struct idx_type_adapter {
+			// had to go through additional instantiation context, otherwise don't compile
+			// with template aliases like `detail::gen_identity`
 			template<std::size_t... Js>
-			static constexpr auto call(std::index_sequence<Js...>) {
-				return unit_v<typename F<Is..., Js...>::type>;
-			}
+			struct build {
+				using type = unit<typename F<Is..., Js...>::type>;
+			};
 
 			template<std::size_t... Js>
-			constexpr auto operator()(std::index_sequence<Js...> js) const { return call(js); }
+			using type = typename build<Js...>::type;
+
+			template<std::size_t... Js>
+			static constexpr auto call(std::index_sequence<Js...>) -> type<Js...> { return {}; }
+
+			template<std::size_t... Js>
+			constexpr auto operator()(std::index_sequence<Js...>) const -> type<Js...> { return {}; }
 		};
 
 		template<template<std::size_t...> typename F, std::size_t... Is>
@@ -132,12 +141,13 @@ namespace tp {
 		template<template<typename...> typename F, typename... Ts>
 		struct apply {
 			template<typename... Us>
-			static constexpr auto call(tpack<Us...>) {
-				return unit_v<F<Ts..., Us...>>;
-			}
+			using type = unit<F<Ts..., Us...>>;
 
 			template<typename... Us>
-			constexpr auto operator()(tpack<Us...> x) const { return call(x); }
+			static constexpr auto call(tpack<Us...>) -> type<Us...> { return {}; }
+
+			template<typename... Us>
+			constexpr auto operator()(tpack<Us...>) const -> type<Us...> { return {}; }
 		};
 
 		template<typename F, typename... Args>
@@ -147,18 +157,18 @@ namespace tp {
 
 	// apply - only makes sense for metafunctions
 	template<template<typename...> typename F, typename... Ts>
-	constexpr auto apply(tpack<Ts...> tp) {
-		return meta::type_adapter<F>::call(tp);
+	constexpr auto apply(tpack<Ts...>) -> typename meta::type_adapter<F>::template type<Ts...> {
+		return {};
 	}
 
-	template<template<typename... Ts> typename F, typename... Us>
-	constexpr auto apply_v(tpack<Us...> tp) {
+	template<template<typename...> typename F, typename... Ts>
+	constexpr auto apply_v(tpack<Ts...> tp) {
 		return meta::value_adapter<F>::call(tp);
 	}
 
-	template<template<typename...> typename F, typename TP>
-	constexpr auto make_v(TP tp) {
-		return meta::apply<F>::call(tp);
+	template<template<typename...> typename F, typename... Ts>
+	constexpr auto make_v(tpack<Ts...>) -> typename meta::apply<F>::template type<Ts...> {
+		return {};
 	}
 
 	template<template<typename...> typename F, typename TP>
@@ -238,8 +248,8 @@ namespace tp {
 	} // namespace detail
 
 	template<std::size_t I, typename... Ts>
-	constexpr auto get(tpack<Ts...>) {
-		return unit_v<decltype( detail::get_impl<std::make_index_sequence<I>>::get(unit_v<Ts>...) )>;
+	constexpr auto get(tpack<Ts...>) -> unit<decltype( detail::get_impl<std::make_index_sequence<I>>::get(unit_v<Ts>...) )> {
+		return {};
 	}
 
 	// back
@@ -355,8 +365,8 @@ namespace tp {
 
 	// transform
 	template<typename... Ts, typename F>
-	constexpr auto transform(tpack<Ts...>, F) {
-		return tpack_v<meta::fn_result_t<F, unit<Ts>>...>;
+	constexpr auto transform(tpack<Ts...>, F) -> tpack<meta::fn_result_t<F, unit<Ts>>...> {
+		return {};
 	}
 
 	template<template<typename...> typename F, typename... Ts>
@@ -369,7 +379,7 @@ namespace tp {
 
 		template<typename F, std::size_t... Is>
 		constexpr auto do_generate(F, std::index_sequence<Is...>) {
-			return tp::tpack<meta::fn_result_t<F, std::index_sequence<Is>>...>{};
+			return tpack<meta::fn_result_t<F, std::index_sequence<Is>>...>{};
 		}
 
 		template<typename T>
