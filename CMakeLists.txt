@@ -19,7 +19,7 @@ target_sources(
 	FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/tp/tpack.h
 )
 
-target_compile_features(tpack INTERFACE cxx_std_17)
+target_compile_features(tpack INTERFACE cxx_std_20)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	include(CTest)

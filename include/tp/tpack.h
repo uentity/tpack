@@ -51,10 +51,10 @@ namespace tp {
 	struct is_tpack<tpack<Ts...>> : std::true_type {};
 
 	template<typename T>
-	using is_tpack_t = typename is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::type;
+	using is_tpack_t = is_tpack<std::remove_cvref_t<T>>::type;
 
 	template<typename T>
-	inline constexpr bool is_tpack_v = is_tpack<std::remove_cv_t<std::remove_reference_t<T>>>::value;
+	inline constexpr bool is_tpack_v = is_tpack<std::remove_cvref_t<T>>::value;
 
 	// helper to suppress unused expression result compiler warnings
 	struct ignore_t {
@@ -151,13 +151,13 @@ namespace tp {
 		};
 
 		template<typename F, typename... Args>
-		using fn_result_t = typename decltype(std::declval<F>()(std::declval<Args>()...))::type;
+		using fn_result_t = decltype(std::declval<F>()(std::declval<Args>()...))::type;
 
 	} // namespace ddv::meta
 
 	// apply - only makes sense for metafunctions
 	template<template<typename...> typename F, typename... Ts>
-	constexpr auto apply(tpack<Ts...>) -> typename meta::type_adapter<F>::template type<Ts...> {
+	constexpr auto apply(tpack<Ts...>) -> meta::type_adapter<F>::template type<Ts...> {
 		return {};
 	}
 
@@ -167,12 +167,12 @@ namespace tp {
 	}
 
 	template<template<typename...> typename F, typename... Ts>
-	constexpr auto make_v(tpack<Ts...>) -> typename meta::apply<F>::template type<Ts...> {
+	constexpr auto make_v(tpack<Ts...>) -> meta::apply<F>::template type<Ts...> {
 		return {};
 	}
 
 	template<template<typename...> typename F, typename TP>
-	using make = typename decltype(make_v<F>(std::declval<TP>()))::type;
+	using make = decltype(make_v<F>(std::declval<TP>()))::type;
 
 	// basic API
 	template<typename... Ts>
@@ -187,7 +187,7 @@ namespace tp {
 	constexpr auto head(nil_tpack) -> nil_tpack { return {}; }
 
 	template<typename... Ts>
-	using head_t = typename decltype(head(tpack_v<Ts...>))::type;
+	using head_t = decltype(head(tpack_v<Ts...>))::type;
 
 	template<typename T, typename... Ts>
 	constexpr auto tail(tpack<T, Ts...>) -> tpack<Ts...> { return {}; }
@@ -264,7 +264,7 @@ namespace tp {
 	}
 
 	template<typename... Ts>
-	using back_t = typename decltype(back(tpack_v<Ts...>))::type;
+	using back_t = decltype(back(tpack_v<Ts...>))::type;
 
 	// pop_back
 	namespace detail {
@@ -309,12 +309,18 @@ namespace tp {
 	constexpr bool contains(tpack<Ts...> x, unit<T>) { return contains<T>(x); }
 
 	// find
-	template<typename T, typename... Ts>
+	template<std::size_t From, typename T, typename... Ts>
 	constexpr auto find(tpack<Ts...>) -> std::size_t {
 		std::size_t res = 0;
-		ignore = ( (std::is_same_v<T, Ts> ? true : (++res, false)) || ... );
+		(void)((res < From ? ++res, false : (std::is_same_v<T, Ts> ? true : (++res, false))) || ...);
 		return res;
 	}
+
+	template<typename T, typename... Ts>
+	constexpr auto find(tpack<Ts...> tp) -> std::size_t { return find<0, T>(tp); }
+
+	template<std::size_t From, typename... Ts, typename T>
+	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<From, T>(x); }
 
 	template<typename... Ts, typename T>
 	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<T>(x); }
@@ -323,7 +329,7 @@ namespace tp {
 	template<typename... Ts, typename Pred>
 	constexpr auto find_if(tpack<Ts...>, Pred f) -> std::size_t {
 		std::size_t res = 0;
-		ignore = ( (f(unit_v<Ts>) ? true : (++res, false)) || ... );
+		(void)( (f(unit_v<Ts>) ? true : (++res, false)) || ... );
 		return res;
 	}
 
