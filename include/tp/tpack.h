@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 
+
 namespace tp {
 
 	template<typename... Ts>
@@ -308,28 +309,41 @@ namespace tp {
 	template<typename... Ts, typename T>
 	constexpr bool contains(tpack<Ts...> x, unit<T>) { return contains<T>(x); }
 
-	// find
-	template<std::size_t From, typename T, typename... Ts>
-	constexpr auto find(tpack<Ts...>) -> std::size_t {
+	// find_if
+	template<std::size_t From, std::size_t To, typename... Ts, typename Pred>
+	constexpr auto find_if(tpack<Ts...>, Pred f) -> std::size_t {
+		(void)f;
+		constexpr auto N = sizeof...(Ts);
+		if constexpr (To == 0 || From >= To)
+			return N;
+		else {
 		std::size_t res = 0;
-		(void)((res < From ? ++res, false : (std::is_same_v<T, Ts> ? true : (++res, false))) || ...);
+			const auto pred = [&]<typename U>(unit<U>) -> bool {
+				if constexpr (To < N) if (res >= To) {
+					res = N;
+					return true;
+				}
+				if constexpr (From > 0) if (res < From) {
+					++res;
+					return false;
+				}
+				return f(unit_v<U>) ? true : (++res, false);
+			};
+			(void)(pred(unit_v<Ts>) || ...);
 		return res;
 	}
+	}
 
-	template<typename T, typename... Ts>
-	constexpr auto find(tpack<Ts...> tp) -> std::size_t { return find<0, T>(tp); }
+	template<std::size_t From, std::size_t To, template<typename...> typename Pred, typename... Ts>
+	constexpr auto find_if(tpack<Ts...> x) {
+		return find_if<From, To>(x, meta::value_adapter_v<Pred>);
+	}
 
-	template<std::size_t From, typename... Ts, typename T>
-	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<From, T>(x); }
-
-	template<typename... Ts, typename T>
-	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<T>(x); }
-
-	// find_if
 	template<typename... Ts, typename Pred>
 	constexpr auto find_if(tpack<Ts...>, Pred f) -> std::size_t {
+		(void)f;
 		std::size_t res = 0;
-		(void)( (f(unit_v<Ts>) ? true : (++res, false)) || ... );
+		(void)((f(unit_v<Ts>) ? true : (++res, false)) || ...);
 		return res;
 	}
 
@@ -338,10 +352,28 @@ namespace tp {
 		return find_if(x, meta::value_adapter_v<Pred>);
 	}
 
+	// find
+	template<std::size_t From, std::size_t To, typename T, typename... Ts>
+	constexpr auto find(tpack<Ts...> tp) -> std::size_t {
+		return find_if<From, To>(tp, meta::value_adapter_v<std::is_same, T>);
+	}
+
+	template<std::size_t From, std::size_t To, typename... Ts, typename T>
+	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<From, To, T>(x); }
+
+	template<typename T, typename... Ts>
+	constexpr auto find(tpack<Ts...> tp) -> std::size_t {
+		return find_if(tp, meta::value_adapter_v<std::is_same, T>);
+	}
+
+	template<typename... Ts, typename T>
+	constexpr auto find(tpack<Ts...> x, unit<T>) { return find<T>(x); }
+
 	// all_of
 	template<typename... Ts, typename Pred>
-	constexpr bool all_of(tpack<Ts...>, Pred f) {
-		return (f(unit_v<Ts>) && ...);
+	constexpr bool all_of(tpack<Ts...>, Pred pred) {
+		(void)pred;
+		return (pred(unit_v<Ts>) && ...);
 	}
 
 	template<template<typename...> typename Pred, typename... Ts>
@@ -352,6 +384,7 @@ namespace tp {
 	// any_of
 	template<typename... Ts, typename Pred>
 	constexpr bool any_of(tpack<Ts...>, Pred pred) {
+		(void)pred;
 		return (pred(unit_v<Ts>) || ...);
 	}
 
@@ -428,6 +461,7 @@ namespace tp {
 
 	template<typename... Ts, typename Pred>
 	constexpr auto filter(tpack<Ts...>, Pred f) {
+		(void)f;
 		return (detail::filter_one(unit_v<Ts>, f) + ... + nil_v);
 	}
 
@@ -472,7 +506,6 @@ namespace tp {
 			if constexpr (empty(tp))
 				return res;
 			else
-				//return do_fold_left(pop_front(tp), f(res + head(tp)), f);
 				return do_fold_left(pop_front(tp), f(tpack_v<Rs..., typename decltype(head(tp))::type>), f);
 		}
 

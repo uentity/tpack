@@ -86,10 +86,22 @@ namespace tp {
 	static_assert(reverse(tpack_v<int&, double&&, char**>) == tpack_v<char**, double&&, int&>);
 
 	// find
-	static_assert(find<int>(tpack<int, double, char>{}) == 0);
-	static_assert(find(tpack<int, double, char>{}, tpack<double>{}) == 1);
-	static_assert(find<char>(tpack<int, double, char>{}) == 2);
-	static_assert(find(tpack<int, double, char>{}, unit<bool>{}) == 3);
+	static_assert(find<int>(tpack_v<int, double, char>) == 0);
+	static_assert(find(tpack_v<int, double, char>, unit_v<double>) == 1);
+	static_assert(find<char>(tpack_v<int, double, char>) == 2);
+	static_assert(find(tpack_v<int, double, char>, unit_v<bool>) == 3);
+
+	static_assert(find<0, 3, int>(tpack_v<int, double, int>) == 0);
+	static_assert(find<1, 3, int>(tpack_v<int, double, int>) == 2);
+	static_assert(find<1, 4>(tpack_v<int, double, int, int&>, unit_v<int>) == 2);
+	static_assert(find<1, 4>(tpack_v<int, double, int, int, int&>, unit_v<int>) == 2);
+	static_assert(find<0, 0, int>(tpack_v<int, double, int, int, int&>) == 5);
+	static_assert(find<0, 1, int>(tpack_v<int, double, int, int, int&>) == 0);
+	static_assert(find<1, 1, int>(tpack_v<int, double, int, int, int&>) == 5);
+	static_assert(find<1, 3, int>(tpack_v<int, double, int, int, int&>) == 2);
+	static_assert(find<2, 3, int>(tpack_v<int, double, int, int, int&>) == 2);
+	static_assert(find<3, 5, int>(tpack_v<int, double, int, int, int&>) == 3);
+	static_assert(find<10, 5, int>(tpack_v<int, double, int, int, int&>) == 5);
 
 	// find_if
 	static_assert(find_if<std::is_pointer>(tpack<int, int*, char>{}) == 1);
@@ -108,9 +120,7 @@ namespace tp {
 	static_assert(generate<3, int&>() == tpack_v<int&, int&, int&>);
 
 	template<size_t I>
-	struct test_gen_type {
-		using type = std::conditional_t<I%2 == 0, int, char>;
-	};
+	using test_gen_type = unit<std::conditional_t<I%2 == 0, int, char>>;
 
 	static_assert(generate<0, test_gen_type>() == nil_v);
 	static_assert(generate<1, test_gen_type>() == tp::unit_v<int>);
@@ -125,6 +135,7 @@ namespace tp {
 	static_assert(distinct(nil_v) == nil_v);
 	static_assert(distinct(tpack_v<int>) == unit_v<int>);
 	static_assert(distinct(tpack_v<int, int>) == unit_v<int>);
+	static_assert(distinct(tpack_v<int, int, int>) == unit_v<int>);
 	static_assert(distinct(tpack_v<char, int, char*,  char, char, int, int&&>) == tpack_v<char, int, char*, int&&>);
 
 	// fold_left, fold_right
