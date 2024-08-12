@@ -22,6 +22,8 @@ target_sources(
 target_compile_features(tpack INTERFACE cxx_std_20)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+	option(ENABLE_TIME_TRACE "Enable compile time trace for Clang" ON)
+
 	include(CTest)
 	if (BUILD_TESTING)
 		add_library(
@@ -31,9 +33,14 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 		)
 		target_compile_options(tpack_tests PRIVATE
 			$<$<CXX_COMPILER_ID:MSVC>:/W4>
-			$<$<CXX_COMPILER_ID:Clang>:-fbracket-depth=1000000 -ftime-trace>
-			$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
+			$<$<CXX_COMPILER_ID:Clang>:-fbracket-depth=100000>
+			$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-ftemplate-depth=100000 -Wall -Wextra -Wpedantic>
 		)
+		if (ENABLE_TIME_TRACE)
+			target_compile_options(tpack_tests PRIVATE
+				$<$<CXX_COMPILER_ID:Clang>:-ftime-trace>
+			)
+		endif ()
 		target_link_libraries(tpack_tests tpack)
 	endif ()
 endif ()

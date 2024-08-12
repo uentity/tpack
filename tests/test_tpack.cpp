@@ -136,7 +136,7 @@ namespace tp {
 	static_assert(distinct(tpack_v<int>) == unit_v<int>);
 	static_assert(distinct(tpack_v<int, int>) == unit_v<int>);
 	static_assert(distinct(tpack_v<int, int, int>) == unit_v<int>);
-	static_assert(distinct(tpack_v<char, int, char*,  char, char, int, int&&>) == tpack_v<char, int, char*, int&&>);
+	static_assert(distinct(tpack_v<char, int, char*, char, char, int, int&&>) == tpack_v<char, int, char*, int&&>);
 
 	// fold_left, fold_right
 	template<typename L, typename R>

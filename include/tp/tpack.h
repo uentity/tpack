@@ -195,9 +195,12 @@ namespace tp {
 
 	constexpr auto tail(nil_tpack) -> nil_tpack { return {}; }
 
+	template<typename... Ts>
+	using tail_t = decltype(tail(tpack_v<Ts...>));
+
 	template<typename... TPs>
 	constexpr auto concat(TPs... tps) {
-		return (tps + ...);
+		return (tps + ... + nil_v);
 	}
 
 	// unwrap: strips `unit<unit<...tpack<Ts...>...>>` -> tpack<Ts...>
@@ -235,23 +238,29 @@ namespace tp {
 		template<std::size_t I, typename T>
 		struct indexed_type {};
 
-		template<typename Is, typename... Ts>
+		template<typename IS, typename TS>
 		struct indexed_types;
 
+		template<std::size_t I, typename T>
+		constexpr auto get_indexed_type(const indexed_type<I, T>*) -> unit<T>;
+
 		template<std::size_t... Is, typename... Ts>
-		struct indexed_types<std::index_sequence<Is...>, Ts...> : indexed_type<Is, Ts>... {};
+		struct indexed_types<std::index_sequence<Is...>, tpack<Ts...>> : indexed_type<Is, Ts>... {
+			// extract arbitrary types given their indexes Js
+			template<std::size_t... Js>
+			constexpr auto get(std::index_sequence<Js...>) const
+			-> tpack<typename decltype(get_indexed_type<Js>(this))::type...> { return {}; }
+		};
 
 		template<typename... Ts>
-		using indexed_types_for = indexed_types<std::index_sequence_for<Ts...>, Ts...>;
-
-		template<std::size_t I, typename T>
-		constexpr unit<T> get_indexed_type(indexed_type<I, T>*);
+		using indexed_types_for = indexed_types<std::index_sequence_for<Ts...>, tpack<Ts...>>;
 
 	} // namespace detail
 
 	template<std::size_t I, typename... Ts>
-	constexpr auto get(tpack<Ts...>)
-	-> decltype( detail::get_indexed_type<I>(std::declval<detail::indexed_types_for<Ts...>*>()) ) {
+	constexpr auto get(tpack<Ts...>) -> decltype(
+		detail::get_indexed_type<I>(std::declval<detail::indexed_types_for<Ts...>*>())
+	) {
 		return {};
 	}
 
@@ -290,7 +299,9 @@ namespace tp {
 
 		template<std::size_t... Is, typename TP>
 		constexpr auto do_reverse(std::index_sequence<Is...>, TP tp) {
-			return tpack_v<typename decltype(get<size(tp) - Is - 1>(tp))::type...>;
+			constexpr auto N = size(tp);
+			constexpr auto itp = indexed_types<std::index_sequence<Is...>, TP>{};
+			return itp.get(std::index_sequence<(N - Is - 1)...>{});
 		}
 
 	} // namespace detail
@@ -317,7 +328,7 @@ namespace tp {
 		if constexpr (To == 0 || From >= To)
 			return N;
 		else {
-		std::size_t res = 0;
+			std::size_t res = 0;
 			const auto pred = [&]<typename U>(unit<U>) -> bool {
 				if constexpr (To < N) if (res >= To) {
 					res = N;
@@ -330,8 +341,8 @@ namespace tp {
 				return f(unit_v<U>) ? true : (++res, false);
 			};
 			(void)(pred(unit_v<Ts>) || ...);
-		return res;
-	}
+			return res;
+		}
 	}
 
 	template<std::size_t From, std::size_t To, template<typename...> typename Pred, typename... Ts>
@@ -420,7 +431,7 @@ namespace tp {
 
 		template<typename F, std::size_t... Is>
 		constexpr auto do_generate(F, std::index_sequence<Is...>) {
-			return tpack<meta::fn_result_t<F, std::index_sequence<Is>>...>{};
+			return tpack_v<meta::fn_result_t<F, std::index_sequence<Is>>...>;
 		}
 
 		template<typename T>
@@ -473,24 +484,24 @@ namespace tp {
 	// distinct
 	namespace detail {
 
-		template<typename... Ts, typename... Rs>
-		constexpr auto do_distinct(tpack<Ts...> src, tpack<Rs...> dst) {
-			if constexpr (empty(src))
-				return dst;
-			else {
-				const auto first = head(src);
-				if constexpr (find(dst, first) < size(dst))
-					return do_distinct(pop_front(src), dst);
-				else
-				 	return do_distinct(pop_front(src), push_back(dst, first));
-			}
-		}
+		template<typename... Ts>
+		struct distinct_chain {
+			static constexpr auto value = tpack_v<Ts...>;
+
+			template<typename U>
+				requires (find<U>(value) == sizeof...(Ts))
+			constexpr auto operator+(distinct_chain<U>) -> distinct_chain<Ts..., U> { return {}; }
+
+			template<typename U>
+			constexpr auto operator+(distinct_chain<U>) -> distinct_chain { return value; }
+		};
 
 	} // namespace detail
 
 	template<typename... Ts>
-	constexpr auto distinct(tp::tpack<Ts...> tp) {
-		return detail::do_distinct(tp, nil_v);
+	constexpr auto distinct(tpack<Ts...>) {
+		using namespace detail;
+		return decltype((distinct_chain<>{} + ... + distinct_chain<Ts>{}))::value;
 	}
 
 	// fold_left, fold_right
