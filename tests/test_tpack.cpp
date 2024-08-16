@@ -141,26 +141,30 @@ namespace tp {
 	// fold_left, fold_right
 	template<typename L, typename R>
 	struct fold_always_lhs {
-		static constexpr auto value = unit_v<L>;
+		using type = L;
 	};
 
 	static_assert(fold_left<fold_always_lhs>(nil_v) == nil_v);
 	static_assert(fold_left<fold_always_lhs>(tpack_v<int>) == unit_v<int>);
 	static_assert(fold_left<fold_always_lhs>(tpack_v<int>, unit_v<void>) == unit_v<void>);
 	static_assert(fold_left<fold_always_lhs>(tpack_v<int, char, double>) == unit_v<int>);
-
-	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>) == unit_v<double>);
-	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>, unit_v<void>) == unit_v<void>);
+	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>) == unit_v<int>);
+	static_assert(fold_right<fold_always_lhs>(tpack_v<int, char, double>, unit_v<void>) == unit_v<int>);
 
 	// simulate reverse with fold
 	template<typename L, typename R>
 	struct fold_reverse {
-		static constexpr auto value = unit_v<tpack<R, L>>;
+		using type = tpack<R, L>;
 	};
 
 	template<typename... Ts, typename R>
 	struct fold_reverse<tpack<Ts...>, R> {
-		static constexpr auto value = unit_v<tpack<R, Ts...>>;
+		using type = tpack<R, Ts...>;
+	};
+
+	template<typename L, typename... Ts>
+	struct fold_reverse<L, tpack<Ts...>> {
+		using type = tpack<Ts..., L>;
 	};
 
 	static_assert(fold_left<fold_reverse>(nil_v) == nil_v);
@@ -168,8 +172,7 @@ namespace tp {
 	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<double, char, int>>);
 	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<double, char, int, void>>);
 	static_assert(fold_left<fold_reverse>(tpack_v<int, char, double>, unit_v<tpack<t0, t1>>) == unit_v<tpack<double, char, int, t0, t1>>);
-
-	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<int, char, double>>);
-	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<int, char, double, void>>);
+	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<double, char, int>>);
+	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<void, double, char, int>>);
 
 } // namespace tp

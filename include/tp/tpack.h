@@ -486,14 +486,14 @@ namespace tp {
 
 		template<typename... Ts>
 		struct distinct_chain {
-			static constexpr auto value = tpack_v<Ts...>;
+			using type = tpack<Ts...>;
 
 			template<typename U>
-				requires (find<U>(value) == sizeof...(Ts))
-			constexpr auto operator+(distinct_chain<U>) -> distinct_chain<Ts..., U> { return {}; }
+				requires (find<U, Ts...>({}) == sizeof...(Ts))
+			constexpr auto operator+(distinct_chain<U>) const -> distinct_chain<Ts..., U> { return {}; }
 
 			template<typename U>
-			constexpr auto operator+(distinct_chain<U>) -> distinct_chain { return value; }
+			constexpr auto operator+(distinct_chain<U>) const -> distinct_chain { return {}; }
 		};
 
 	} // namespace detail
@@ -501,52 +501,66 @@ namespace tp {
 	template<typename... Ts>
 	constexpr auto distinct(tpack<Ts...>) {
 		using namespace detail;
-		return decltype((distinct_chain<>{} + ... + distinct_chain<Ts>{}))::value;
+		return typename decltype((distinct_chain<>{} + ... + distinct_chain<Ts>{}))::type{};
 	}
 
 	// fold_left, fold_right
 	namespace detail {
 
-		template<typename T, typename R, typename F>
-		constexpr auto do_fold_left(T, R, F) {
-			static_assert(false, "Folding meta-function `F` must produce `F::value` of type `unit<T>`");
+		template<typename F, typename RS>
+		struct folder;
+		
+		template<typename F, typename... Rs>
+		struct folder<F, tpack<Rs...>> {
+			using type = tpack<Rs...>;
+		};
+
+		template<typename T, typename F, typename... Rs>
+		constexpr auto operator+(unit<T>, folder<F, tpack<Rs...>>) {
+			if constexpr (sizeof...(Rs))
+				return folder<F, decltype(std::declval<F>()(tpack_v<T, Rs...>))>{};
+			else
+				return folder<F, unit<T>>{};
+		}
+
+		template<typename F, typename... Rs, typename T>
+		constexpr auto operator+(folder<F, tpack<Rs...>>, unit<T>) {
+			if constexpr (sizeof...(Rs))
+				return folder<F, decltype(std::declval<F>()(tpack_v<Rs..., T>))>{};
+			else
+				return folder<F, unit<T>>{};
+		}
+
+		template<typename... Ts, typename F>
+		constexpr auto do_fold_left(tpack<Ts...>, F) {
+			return typename decltype((folder<F, nil_tpack>{} + ... + unit_v<Ts>))::type{};
 		}
 
 		template<typename... Ts, typename... Rs, typename F>
-		constexpr auto do_fold_left(tpack<Ts...> tp, tpack<Rs...> res, F f) {
-			if constexpr (empty(tp))
-				return res;
-			else
-				return do_fold_left(pop_front(tp), f(tpack_v<Rs..., typename decltype(head(tp))::type>), f);
+		constexpr auto do_fold_right(tpack<Ts...>, F) {
+			return typename decltype((unit_v<Ts> + ... + folder<F, nil_tpack>{}))::type{};
 		}
 
 	} // namespace detail
 
 	template<typename... Ts, typename F, typename D = nil_tpack>
 	constexpr auto fold_left(tpack<Ts...> tp, F f, D seed = nil_v) {
-		if constexpr (empty(seed) && size(tp) > 0)
-			return detail::do_fold_left(pop_front(tp), head(tp), f);
-		else
-			return detail::do_fold_left(tp, seed, f);
+		return detail::do_fold_left(seed + tp, f);
 	}
 
-	// If `F` is a classic meta-function that calculates `F::type`,
-	// use `fold_left(tp, meta::type_adapter_v<F>, seed)` call
 	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
 	constexpr auto fold_left(tpack<Ts...> tp, D seed = nil_v) {
-		return fold_left(tp, meta::value_adapter_v<F>, seed);
+		return fold_left(tp, meta::type_adapter_v<F>, seed);
 	}
 
 	template<typename... Ts, typename F, typename D = nil_tpack>
 	constexpr auto fold_right(tpack<Ts...> tp, F f, D seed = nil_v) {
-		return fold_left(reverse(tp), f, seed);
+		return detail::do_fold_right(tp + seed, f);
 	}
 
-	// If `F` is a classic meta-function that calculates `F::type`,
-	// use `fold_right(tp, meta::type_adapter_v<F>, seed)` call
 	template<template<typename L, typename R> typename F, typename... Ts, typename D = nil_tpack>
 	constexpr auto fold_right(tpack<Ts...> tp, D seed = nil_v) {
-		return fold_right(tp, meta::value_adapter_v<F>, seed);
+		return fold_right(tp, meta::type_adapter_v<F>, seed);
 	}
 
 } // namespace tp
