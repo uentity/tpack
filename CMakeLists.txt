@@ -22,21 +22,24 @@ target_sources(
 target_compile_features(tpack INTERFACE cxx_std_20)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-	option(ENABLE_TIME_TRACE "Enable compile time trace for Clang" ON)
+	option(TPACK_ENABLE_BENCHMARK "Enable benchmark compile with tests" OFF)
+	option(TPACK_ENABLE_TIME_TRACE "Enable compile time trace for Clang" ON)
 
 	include(CTest)
 	if (BUILD_TESTING)
 		add_library(
 			tpack_tests STATIC
 			${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tpack.cpp
-			${CMAKE_CURRENT_SOURCE_DIR}/tests/test_benchmark.cpp
 		)
+		if (TPACK_ENABLE_BENCHMARK)
+			target_sources(tpack_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_benchmark.cpp)
+		endif()
 		target_compile_options(tpack_tests PRIVATE
 			$<$<CXX_COMPILER_ID:MSVC>:/W4>
 			$<$<CXX_COMPILER_ID:Clang>:-fbracket-depth=100000>
 			$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-ftemplate-depth=100000 -Wall -Wextra -Wpedantic>
 		)
-		if (ENABLE_TIME_TRACE)
+		if (TPACK_ENABLE_TIME_TRACE)
 			target_compile_options(tpack_tests PRIVATE
 				$<$<CXX_COMPILER_ID:Clang>:-ftime-trace>
 			)
