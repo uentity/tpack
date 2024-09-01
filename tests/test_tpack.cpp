@@ -61,6 +61,20 @@ namespace tp {
 	static_assert(push_back<int>(tpack<double, char>{}) == tpack<double, char, int>{});
 	static_assert(pop_back(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&>);
 
+	// first
+	static_assert(first<4>(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&, char>);
+	static_assert(first<3>(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&, char>);
+	static_assert(first<2>(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&>);
+	static_assert(first<1>(tpack_v<int&, double&&, char>) == tpack_v<int&>);
+	static_assert(first<0>(tpack_v<int&, double&&, char>) == nil_v);
+
+	// last
+	static_assert(last<4>(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&, char>);
+	static_assert(last<3>(tpack_v<int&, double&&, char>) == tpack_v<int&, double&&, char>);
+	static_assert(last<2>(tpack_v<int&, double&&, char>) == tpack_v<double&&, char>);
+	static_assert(last<1>(tpack_v<int&, double&&, char>) == tpack_v<char>);
+	static_assert(last<0>(tpack_v<int&, double&&, char>) == nil_v);
+
 	// unwrap
 	static_assert(strip(nil_v) == nil_v);
 	static_assert(strip(unit_v<int>) == unit_v<int>);

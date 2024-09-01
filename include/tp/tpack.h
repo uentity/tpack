@@ -274,24 +274,45 @@ namespace tp {
 	}
 
 	template<typename... Ts>
+		requires (sizeof...(Ts) > 0)
 	using back_t = decltype(back(tpack_v<Ts...>))::type;
 
 	// pop_back
-	namespace detail {
-
-		template<std::size_t... Is, typename TP>
-		constexpr auto get_first(std::index_sequence<Is...>, TP tp) {
-			return tpack_v<typename decltype(get<Is>(tp))::type...>;
-		}
-
-	} // namespace detail
-
 	template<typename... Ts>
 	constexpr auto pop_back(tpack<Ts...> tp) {
 		if constexpr(empty(tp))
 			return tp;
-		else
-			return detail::get_first(std::make_index_sequence<size(tp) - 1>{}, tp);
+		else {
+			constexpr auto itp = detail::indexed_types_for<Ts...>{};
+			return itp.get(std::make_index_sequence<size(tp) - 1>{});
+		}
+	}
+
+	// first
+	template<std::size_t N, typename... Ts>
+	constexpr auto first(tpack<Ts...>) {
+		constexpr auto itp = detail::indexed_types_for<Ts...>{};
+		constexpr auto M = sizeof...(Ts);
+		return itp.get(std::make_index_sequence<(N <= M ? N : M)>{});
+	}
+
+	// last
+	namespace detail {
+
+		template<std::size_t... Is, typename... Ts>
+		constexpr auto do_last(std::index_sequence<Is...>, tpack<Ts...>) {
+			constexpr auto N = sizeof...(Ts);
+			constexpr auto offset = N - sizeof...(Is);
+			constexpr auto itp = indexed_types_for<Ts...>{};
+			return itp.get(std::index_sequence<Is + offset...>{});
+		}
+
+	} // namespace detail
+
+	template<std::size_t N, typename... Ts>
+	constexpr auto last(tpack<Ts...> tp) {
+		constexpr auto M = sizeof...(Ts);
+		return detail::do_last(std::make_index_sequence<(N <= M ? N : M)>{}, tp);
 	}
 
 	// reverse
