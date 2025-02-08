@@ -447,6 +447,12 @@ namespace tp {
 		return tpack_v<typename F<Ts>::type...>;
 	}
 
+	// for_each
+	template<typename... Ts, typename F>
+	constexpr auto for_each(tpack<Ts...>, F&& f) -> void {
+		(void)(f(unit_v<Ts>), ...);
+	}
+
 	// generate
 	namespace detail {
 
