@@ -132,6 +132,9 @@ namespace tp {
 	// generate
 	static_assert(generate<0, int>() == nil_v);
 	static_assert(generate<3, int&>() == tpack_v<int&, int&, int&>);
+	static_assert(generate<3, int&&>() == tpack_v<int&&, int&&, int&&>);
+	static_assert(generate<3, char>() == tpack_v<char, char, char>);
+	static_assert(generate<3, char const* const*>() == tpack_v<char const* const*, char const* const*, char const* const*>);
 
 	template<size_t I>
 	using test_gen_type = unit<std::conditional_t<I%2 == 0, int, char>>;
@@ -139,6 +142,7 @@ namespace tp {
 	static_assert(generate<0, test_gen_type>() == nil_v);
 	static_assert(generate<1, test_gen_type>() == tp::unit_v<int>);
 	static_assert(generate<2, test_gen_type>() == tp::tpack_v<int, char>);
+	static_assert(generate<3, test_gen_type>() == tp::tpack_v<int, char, int>);
 	static_assert(generate<4, test_gen_type>() == tp::tpack_v<int, char, int, char>);
 
 	// filter

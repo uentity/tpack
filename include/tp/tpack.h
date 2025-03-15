@@ -119,8 +119,8 @@ namespace tp {
 
 		template<template<std::size_t...> typename F, std::size_t... Is>
 		struct idx_type_adapter {
-			// had to go through additional instantiation context, otherwise don't compile
-			// with template aliases like `detail::gen_identity`
+			// had to go through additional instantiation context,
+			// otherwise doesn't compile when `F` is a template alias
 			template<std::size_t... Js>
 			struct build {
 				using type = unit<typename F<Is..., Js...>::type>;
@@ -461,10 +461,10 @@ namespace tp {
 			return tpack_v<meta::fn_result_t<F, std::index_sequence<Is>>...>;
 		}
 
-		template<typename T>
-		struct gen_identity {
-			template<std::size_t> using type = unit<T>;
-		};
+		template<typename T, std::size_t... Is>
+		constexpr auto do_generate_identity(std::index_sequence<Is...>) {
+			return tpack_v<typename decltype(((void)Is, unit<T>{}))::type...>;
+		}
 
 	} // namespace detail
 
@@ -480,8 +480,7 @@ namespace tp {
 
 	template<std::size_t N, typename T>
 	constexpr auto generate() {
-		using detail::gen_identity;
-		return generate<N, gen_identity<T>::template type>();
+		return detail::do_generate_identity<T>(std::make_index_sequence<N>{});
 	}
 
 	// filter
