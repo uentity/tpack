@@ -27,8 +27,8 @@ namespace tp {
 	template<typename T, typename... Ts>
 	struct fold_distinct<tpack<Ts...>, T> {
 		using type = std::conditional_t<
-			find<T, Ts...>({}) == sizeof...(Ts),
-			tpack<Ts..., T>, tpack<Ts...>
+			contains<T, Ts...>({}),
+			tpack<Ts...>, tpack<Ts..., T>
 		>;
 	};
 
@@ -54,14 +54,14 @@ namespace tp {
 	static_assert(one_int == unit_v<int>);
 
 	constexpr auto l1 = push_back(rev_big_int_list, unit_v<char>);
-	static_assert(contains(l1, unit_v<char>));
+	static_assert(contains(unit_v<char>, l1));
 	static_assert(find<char>(l1) == 2000);
 
 	constexpr auto big_ic_list = generate<2000, gen_int_char>();
 	constexpr auto ic_pair = distinct(big_ic_list);
 	static_assert(ic_pair == tpack_v<int, char>);
 	constexpr auto only_ints = filter(big_ic_list, meta::value_adapter_v<std::is_same, int>);
-	static_assert(size(only_ints) == 1000 && !contains(only_ints, unit_v<char>));
+	static_assert(size(only_ints) == 1000 && !contains(unit_v<char>, only_ints));
 
 	constexpr auto unique_ts = generate<500, gen_unique_type>();
 	constexpr auto rev_unique_ts = reverse(unique_ts);

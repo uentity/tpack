@@ -338,8 +338,17 @@ namespace tp {
 		return (std::is_same_v<T, Ts> || ...);
 	}
 
-	template<typename... Ts, typename T>
-	constexpr bool contains(tpack<Ts...> x, unit<T>) { return contains<T>(x); }
+	template<typename T, typename... Ts>
+	constexpr bool contains(unit<T>, tpack<Ts...> x) { return contains<T>(x); }
+
+	template<typename... Ts>
+	constexpr bool contains(nil_tpack, tpack<Ts...>) { return false; }
+
+	template<typename... Us, typename... Ts>
+	constexpr bool contains_any_of(tpack<Us...>, tpack<Ts...>) {
+		constexpr auto test = []<typename X>(unit<X>) -> bool { return (std::is_same_v<X, Us> || ...); };
+		return (test(unit_v<Ts>) || ...);
+	}
 
 	// find_if
 	template<std::size_t From, std::size_t To, typename... Ts, typename Pred>
@@ -515,11 +524,11 @@ namespace tp {
 			using type = tpack<Ts...>;
 
 			template<typename U>
-				requires (find<U, Ts...>({}) == sizeof...(Ts))
-			constexpr auto operator+(distinct_chain<U>) const -> distinct_chain<Ts..., U> { return {}; }
+			constexpr auto operator+(unit<U>) const -> distinct_chain<Ts..., U> { return {}; }
 
 			template<typename U>
-			constexpr auto operator+(distinct_chain<U>) const -> distinct_chain { return {}; }
+				requires (contains<U, Ts...>({}))
+			constexpr auto operator+(unit<U>) const -> distinct_chain { return {}; }
 		};
 
 	} // namespace detail
@@ -527,7 +536,7 @@ namespace tp {
 	template<typename... Ts>
 	constexpr auto distinct(tpack<Ts...>) {
 		using namespace detail;
-		return typename decltype((distinct_chain<>{} + ... + distinct_chain<Ts>{}))::type{};
+		return typename decltype((distinct_chain{} + ... + unit_v<Ts>))::type{};
 	}
 
 	// fold_left, fold_right

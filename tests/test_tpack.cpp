@@ -85,16 +85,29 @@ namespace tp {
 	static_assert(strip(unit_v<unit<unit<tpack<int, char, double>>>>) == tpack_v<int, char, double>);
 
 	// get
+	static_assert(get<0>(tpack_v<double, int&, char>) == unit_v<double>);
 	static_assert(get<1>(tpack_v<double, int&, char>) == unit_v<int&>);
+	static_assert(get<2>(tpack_v<double, int&, char>) == unit_v<char>);
 
 	// back
 	static_assert(back(tpack_v<int, float, char*>) == unit_v<char*>);
 	static_assert(back(nil_v) == nil_v);
 
 	// contains
-	static_assert(contains<int>(tpack<double, char, int>{}));
-	static_assert(!contains<float>(tpack<double, char, int>{}));
-	static_assert(!contains(nil_v, tpack<int>{}));
+	static_assert(contains<int>(tpack_v<double, char, int>));
+	static_assert(contains(unit_v<char*&>, tpack_v<double, char*&, int>));
+	static_assert(!contains<float>(tpack_v<double, char, int>));
+	static_assert(!contains(unit_v<int>, nil_v));
+	static_assert(!contains(nil_v, tpack_v<char, int>));
+	static_assert(!contains(nil_v, nil_v));
+
+	// contains_any
+	static_assert(!contains_any_of(nil_v, tpack_v<double, char*&, int>));
+	static_assert(!contains_any_of(nil_v, nil_v));
+	static_assert(!contains_any_of(tpack_v<bool, int>, nil_v));
+	static_assert(contains_any_of(unit_v<char*&>, tpack_v<double, char*&, int>));
+	static_assert(contains_any_of(tpack_v<long, double>, tpack_v<double, char*&, int>));
+	static_assert(!contains_any_of(tpack_v<long, long, char>, tpack_v<double, char*&, int>));
 
 	// reverse
 	static_assert(reverse(tpack_v<int&, double&&, char**>) == tpack_v<char**, double&&, int&>);
