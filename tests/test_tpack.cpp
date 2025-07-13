@@ -206,4 +206,12 @@ namespace tp {
 	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>) == unit_v<tpack<double, char, int>>);
 	static_assert(fold_right<fold_reverse>(tpack_v<int, char, double>, unit_v<void>) == unit_v<tpack<void, double, char, int>>);
 
+	// remove
+	static_assert(remove(nil_v, nil_v) == nil_v);
+	static_assert(remove(tpack_v<bool, char>, nil_v) == nil_v);
+	static_assert(remove(nil_v, tpack_v<bool, char>) == tpack_v<bool, char>);
+	static_assert(remove(unit_v<bool>, tpack_v<bool, int, char, bool, bool, double>) == tpack_v<int, char, double>);
+	static_assert(remove(tpack_v<bool, char>, tpack_v<bool, int, char, bool, bool, double>) == tpack_v<int, double>);
+	static_assert(remove(tpack_v<bool, char>, tpack_v<bool, bool, bool, char>) == nil_v);
+
 } // namespace tp

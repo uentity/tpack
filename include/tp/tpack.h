@@ -598,4 +598,10 @@ namespace tp {
 		return fold_right(tp, meta::type_adapter_v<F>, seed);
 	}
 
+	// remove
+	template<typename... Us, typename... Ts>
+	constexpr auto remove(tpack<Us...>, tpack<Ts...> x) {
+		return filter(x, []<typename T>(unit<T>) { return !contains<T, Us...>({}); });
+	}
+
 } // namespace tp
