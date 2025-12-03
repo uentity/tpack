@@ -264,6 +264,9 @@ namespace tp {
 		return {};
 	}
 
+	template<std::size_t I, typename TP>
+	using get_t = decltype(get<I>(TP{}))::type;
+
 	// back
 	template<typename... Ts>
 	constexpr auto back(tpack<Ts...> tp) {
