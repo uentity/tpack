@@ -349,7 +349,7 @@ namespace tp {
 
 	template<typename... Us, typename... Ts>
 	constexpr bool contains_any_of(tpack<Us...>, tpack<Ts...>) {
-		constexpr auto test = []<typename X>(unit<X>) -> bool { return (std::is_same_v<X, Us> || ...); };
+		[[maybe_unused]] constexpr auto test = []<typename X>(unit<X>) -> bool { return (std::is_same_v<X, Us> || ...); };
 		return (test(unit_v<Ts>) || ...);
 	}
 

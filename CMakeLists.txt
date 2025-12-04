@@ -4,13 +4,15 @@ project(tpack
 	DESCRIPTION "Modern C++ type pack/list library with efficient value-based approach"
 	LANGUAGES CXX)
 
+set(TPACK_NAMESPACE tp::)
+
 add_library(tpack INTERFACE)
 add_library(tp::tpack ALIAS tpack)
 
 target_include_directories(
 	tpack INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	$<INSTALL_INTERFACE:include>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_sources(
 	tpack INTERFACE
@@ -48,17 +50,37 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	endif ()
 endif ()
 
+## Install and export
+
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+set(PACKAGE_CONFIG_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+
 install(
 	TARGETS tpack
 	EXPORT tpack-targets
-	INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 	FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(
-	EXPORT tpack-targets NAMESPACE tp::
-	DESTINATION ${CMAKE_INSTALL_LIB_DIR}/cmake/tpack
+	EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE}
+	FILE tpack-targets.cmake
+	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
 )
-export(EXPORT tpack-targets NAMESPACE tp:: FILE tpack-config.cmake)
-set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
-export(PACKAGE tpack)
+
+configure_package_config_file(
+	${CMAKE_CURRENT_SOURCE_DIR}/cmake/tpack-config.cmake.in
+	"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+	INSTALL_DESTINATION ${PACKAGE_CONFIG_DESTINATION}
+)
+install(
+	FILES "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
+)
+
+if (DEFINED CMAKE_USER_BUILD_DEV_MODE AND CMAKE_USER_BUILD_DEV_MODE)
+	message(STATUS "Local Package Registry ENABLED for development.")
+	set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
+	export(EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE} FILE tpack-targets.cmake)
+	export(PACKAGE tpack)
+endif ()
