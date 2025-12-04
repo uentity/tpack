@@ -68,6 +68,12 @@ install(
 	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
 )
 
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
+	APPEND PROPERTY EXPORT_PACKAGE_REGISTRY ${PROJECT_NAME}
+)
+set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
+export(EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE} FILE "${CMAKE_CURRENT_BINARY_DIR}/tpack-targets.cmake")
+
 configure_package_config_file(
 	${CMAKE_CURRENT_SOURCE_DIR}/cmake/tpack-config.cmake.in
 	"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
@@ -80,7 +86,5 @@ install(
 
 if (DEFINED CMAKE_USER_BUILD_DEV_MODE AND CMAKE_USER_BUILD_DEV_MODE)
 	message(STATUS "Local Package Registry ENABLED for development.")
-	set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
-	export(EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE} FILE tpack-targets.cmake)
 	export(PACKAGE tpack)
 endif ()

@@ -2,8 +2,9 @@
 @PACKAGE_INIT@
 
 # 1. Include the Targets File
-# This defines the imported targets like tp::tpack.
-include("${CMAKE_CURRENT_LIST_DIR}/tpack-targets.cmake")
+if (NOT TARGET tp::tpack)
+	include("${CMAKE_CURRENT_LIST_DIR}/tpack-targets.cmake")
+endif ()
 
 # 2. Check for required components
 check_required_components(tpack)
