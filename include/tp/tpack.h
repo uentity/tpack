@@ -574,7 +574,7 @@ namespace tp {
 			return typename decltype((folder<F, nil_tpack>{} + ... + unit_v<Ts>))::type{};
 		}
 
-		template<typename... Ts, typename... Rs, typename F>
+		template<typename... Ts, typename F>
 		constexpr auto do_fold_right(tpack<Ts...>, F) {
 			return typename decltype((unit_v<Ts> + ... + folder<F, nil_tpack>{}))::type{};
 		}
