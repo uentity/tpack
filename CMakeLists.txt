@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.31)
 
 project(tpack
+	VERSION 0.3
 	DESCRIPTION "Modern C++ type pack/list library with efficient value-based approach"
 	LANGUAGES CXX)
 
@@ -8,20 +9,14 @@ set(TPACK_NAMESPACE tp::)
 
 add_library(tpack INTERFACE)
 add_library(tp::tpack ALIAS tpack)
-
-target_include_directories(
-	tpack INTERFACE
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-target_sources(
-	tpack INTERFACE
-	FILE_SET HEADERS
-	BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-	FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/tp/tpack.h
-)
-
 target_compile_features(tpack INTERFACE cxx_std_20)
+
+target_sources(
+	tpack PUBLIC
+	FILE_SET HEADERS
+	BASE_DIRS include
+	FILES include/tp/tpack.h
+)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	option(TPACK_ENABLE_BENCHMARK "Enable benchmark compile with tests" OFF)
@@ -51,20 +46,40 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif ()
 
 ## Install and export
-
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-
 set(PACKAGE_CONFIG_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
 
+# Lib artifacts which is only headers installed into default location
 install(
 	TARGETS tpack
 	EXPORT tpack-targets
-	FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+	FILE_SET HEADERS
 )
+# Install generated package definition file
 install(
-	EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE}
+	EXPORT tpack-targets
+	NAMESPACE ${TPACK_NAMESPACE}
 	FILE tpack-targets.cmake
+	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
+)
+
+# Generate CMake package config files
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/tpack-config.cmake.in"
+	"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+	INSTALL_DESTINATION ${PACKAGE_CONFIG_DESTINATION}
+)
+write_basic_package_version_file(
+	"${CMAKE_CURRENT_BINARY_DIR}/tpack-version.cmake"
+	COMPATIBILITY ExactVersion
+)
+
+# Install generated config files
+install(
+	FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/tpack-version.cmake"
 	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
 )
 
@@ -73,16 +88,6 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 set(CMAKE_EXPORT_PACKAGE_REGISTRY ON)
 export(EXPORT tpack-targets NAMESPACE ${TPACK_NAMESPACE} FILE "${CMAKE_CURRENT_BINARY_DIR}/tpack-targets.cmake")
-
-configure_package_config_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/cmake/tpack-config.cmake.in
-	"${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
-	INSTALL_DESTINATION ${PACKAGE_CONFIG_DESTINATION}
-)
-install(
-	FILES "${CMAKE_CURRENT_BINARY_DIR}/tpack-config.cmake"
-	DESTINATION ${PACKAGE_CONFIG_DESTINATION}
-)
 
 if (DEFINED CMAKE_USER_BUILD_DEV_MODE AND CMAKE_USER_BUILD_DEV_MODE)
 	message(STATUS "Local Package Registry ENABLED for development.")
